@@ -5,14 +5,15 @@ import { describe, it, expect, vi } from 'vitest';
 describe('App', () => {
     it('renders ShopSmart title', () => {
         // Mock fetch
-        global.fetch = vi.fn(() =>
+        window.fetch = vi.fn(() =>
             Promise.resolve({
-                json: () => Promise.resolve({ status: 'ok', message: 'Test Msg', timestamp: 'now' })
+                json: () => Promise.resolve([{ id: 1, name: 'Product', price: 10 }])
             })
         );
 
         render(<App />);
-        const linkElement = screen.getByText(/ShopSmart/i);
-        expect(linkElement).toBeInTheDocument();
+        const elements = screen.getAllByText(/ShopSmart/i);
+        expect(elements.length).toBeGreaterThan(0);
+        expect(elements[0]).toBeInTheDocument();
     });
 });

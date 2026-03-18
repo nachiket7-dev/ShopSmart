@@ -26,7 +26,7 @@ jobs:
       - name: Run tests (Unit)
         run: npm test -- --run
       - name: Install Server dependencies for E2E
-        working-directory: ../server
+        working-directory: ./server
         run: npm ci
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium

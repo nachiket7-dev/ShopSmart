@@ -1,0 +1,41 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute deployment commands via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            # Navigate to the project directory on EC2
+            # Replace this path with your actual project location on the server
+            cd ~/shopsmart-main
+            
+            # Pull the latest code from the main branch
+            git pull origin main
+            
+            # Fast, Idempotent dependency installation using the existing script
+            bash install.sh
+            
+            # Build the frontend
+            cd client
+            npm run build
+            
+            # Restart the backend process using PM2 (a popular process manager)
+            # If not using PM2, this can be swapped with standard nohup/systemctl commands
+            cd ../server
+            pm2 restart shopsmart-backend || pm2 start src/index.js --name shopsmart-backend
+            
+            echo "🚀 Deployment successfully completed!"

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const app = require('./app');
 
-let port = parseInt(process.env.PORT) || 5001;
+let port = process.env.PORT || 3000;
 
 function startServer() {
   const server = app.listen(port, () => {

@@ -25,7 +25,7 @@ export default defineConfig({
     },
     {
       command: 'npm run dev',
-      port: 5001,
+      port: 3000,
       reuseExistingServer: !process.env.CI,
       cwd: '../server',
     }

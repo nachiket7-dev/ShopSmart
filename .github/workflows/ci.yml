@@ -20,7 +20,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       - name: Run linter
         run: npm run lint
       - name: Run tests (Unit)
@@ -44,7 +44,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       - name: Run linter
         run: npm run lint
       - name: Run tests

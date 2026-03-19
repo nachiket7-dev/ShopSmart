@@ -21,11 +21,11 @@ jobs:
 
       - name: Install Client dependencies
         working-directory: ./client
-        run: npm ci
+        run: npm install
 
       - name: Install Server dependencies
         working-directory: ./server
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright Browsers
         working-directory: ./client

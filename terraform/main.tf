@@ -194,25 +194,9 @@ resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-cluster"
 }
 
-# IAM Role for ECS Task Execution
-data "aws_iam_policy_document" "ecs_task_execution_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name               = "${var.app_name}-ecs-task-execution-role"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_execution_role.json
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+# Use the existing LabRole provided by AWS Learner Lab
+data "aws_iam_role" "lab_role" {
+  name = "LabRole"
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -221,7 +205,8 @@ resource "aws_ecs_task_definition" "app" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn       = data.aws_iam_role.lab_role.arn
+  task_role_arn            = data.aws_iam_role.lab_role.arn
 
   container_definitions = jsonencode([{
     name      = "${var.app_name}-container"

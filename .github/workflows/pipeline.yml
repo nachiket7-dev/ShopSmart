@@ -5,6 +5,10 @@ on:
     branches: [ "main" ]
   pull_request:
 
+permissions:
+  contents: read
+  checks: write
+
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: shopsmart-backend
@@ -26,7 +30,7 @@ jobs:
       # --- Server Tests ---
       - name: Install Server Dependencies
         working-directory: ./server
-        run: npm ci
+        run: npm install
 
       - name: Run Server Tests
         working-directory: ./server
@@ -53,7 +57,7 @@ jobs:
       # --- Client Tests ---
       - name: Install Client Dependencies
         working-directory: ./client
-        run: npm ci
+        run: npm install
 
       - name: Run Client Tests
         working-directory: ./client

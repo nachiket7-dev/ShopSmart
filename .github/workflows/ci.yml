@@ -24,7 +24,20 @@ jobs:
       - name: Run linter
         run: npm run lint
       - name: Run tests (Unit)
-        run: npm test -- --run
+        run: npm test -- --run --reporter=default --reporter=junit --outputFile=junit.xml
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-test-report
+          path: client/junit.xml
+      - name: Test Report Annotation
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Client Tests
+          path: client/junit.xml
+          reporter: java-junit
 
       - name: Build
         run: npm run build
@@ -48,4 +61,20 @@ jobs:
       - name: Run linter
         run: npm run lint
       - name: Run tests
-        run: npm test
+        run: npm test -- --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT_DIR: ./
+          JEST_JUNIT_OUTPUT_NAME: junit.xml
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-test-report
+          path: server/junit.xml
+      - name: Test Report Annotation
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Server Tests
+          path: server/junit.xml
+          reporter: jest-junit

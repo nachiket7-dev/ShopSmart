@@ -194,9 +194,12 @@ resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-cluster"
 }
 
-# Use the existing LabRole provided by AWS Learner Lab
-data "aws_iam_role" "lab_role" {
-  name = "LabRole"
+# Get current AWS account ID (sts:GetCallerIdentity is always allowed)
+data "aws_caller_identity" "current" {}
+
+# Build the LabRole ARN directly — avoids iam:GetRole which Learner Lab blocks
+locals {
+  lab_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/LabRole"
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -205,8 +208,8 @@ resource "aws_ecs_task_definition" "app" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = data.aws_iam_role.lab_role.arn
-  task_role_arn            = data.aws_iam_role.lab_role.arn
+  execution_role_arn       = local.lab_role_arn
+  task_role_arn            = local.lab_role_arn
 
   container_definitions = jsonencode([{
     name      = "${var.app_name}-container"

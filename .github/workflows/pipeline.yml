@@ -107,9 +107,15 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan
+        env:
+          TF_VAR_mongodb_uri: ${{ secrets.MONGODB_URI }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        env:
+          TF_VAR_mongodb_uri: ${{ secrets.MONGODB_URI }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
 
       - name: Export Terraform Outputs
         id: tf_outputs

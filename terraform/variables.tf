@@ -25,13 +25,11 @@ variable "container_port" {
 variable "mongodb_uri" {
   description = "MongoDB connection string"
   type        = string
-  default     = "mongodb+srv://amnachiketa_db_user:rAP6wckvXr62Un0f@cluster0.sjaevcg.mongodb.net/?appName=Cluster0"
   sensitive   = true
 }
 
 variable "jwt_secret" {
   description = "Secret key for JWT"
   type        = string
-  default     = "ddd66d20e1f4234257a3d6e7a825c990"
   sensitive   = true
 }

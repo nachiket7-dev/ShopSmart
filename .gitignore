@@ -5,3 +5,6 @@ dist
 build
 coverage
 .vercel
+.terraform
+.terraform.lock.hcl
+.terraform/

@@ -6,8 +6,14 @@ provider "aws" {
 # S3 Bucket Configuration (Rubric Requirement)
 # ---------------------------------------------------------
 
+resource "random_string" "suffix" {
+  length  = 6
+  special = false
+  upper   = false
+}
+
 resource "aws_s3_bucket" "shopsmart_bucket" {
-  bucket        = var.s3_bucket_name
+  bucket        = "${var.s3_bucket_name}-${random_string.suffix.result}"
   force_destroy = true # Useful for cleanup in student projects
 }
 

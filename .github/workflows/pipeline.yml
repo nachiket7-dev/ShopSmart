@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
 
@@ -106,6 +106,9 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
+      - name: Terraform Plan
+        run: terraform plan
+
       - name: Terraform Apply
         run: terraform apply -auto-approve
 
@@ -115,10 +118,12 @@ jobs:
           echo "ecr_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
           echo "cluster_name=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_OUTPUT
           echo "service_name=$(terraform output -raw ecs_service_name)" >> $GITHUB_OUTPUT
+          echo "alb_dns_name=$(terraform output -raw alb_dns_name)" >> $GITHUB_OUTPUT
     outputs:
       ecr_url: ${{ steps.tf_outputs.outputs.ecr_url }}
       cluster_name: ${{ steps.tf_outputs.outputs.cluster_name }}
       service_name: ${{ steps.tf_outputs.outputs.service_name }}
+      alb_dns_name: ${{ steps.tf_outputs.outputs.alb_dns_name }}
 
   build-and-push:
     name: Build & Push to ECR
@@ -177,3 +182,19 @@ jobs:
           aws ecs wait services-stable \
             --cluster ${{ needs.terraform.outputs.cluster_name }} \
             --services ${{ needs.terraform.outputs.service_name }}
+
+      - name: Verify Service Connectivity
+        run: |
+          ALB_URL=${{ needs.terraform.outputs.alb_dns_name }}
+          echo "Verifying service at http://$ALB_URL/api/health"
+          # Try up to 10 times
+          for i in {1..10}; do
+            if curl -s -f "http://$ALB_URL/api/health"; then
+              echo "Service is UP!"
+              exit 0
+            fi
+            echo "Waiting for service... ($i/10)"
+            sleep 15
+          done
+          echo "Service failed to respond at http://$ALB_URL/api/health"
+          exit 1

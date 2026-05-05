@@ -88,7 +88,7 @@ data "aws_subnets" "default" {
 # ---------------------------------------------------------
 
 resource "aws_security_group" "alb_sg" {
-  name        = "${var.app_name}-alb-sg"
+  name        = "${var.app_name}-alb-sg-${random_string.suffix.result}"
   description = "Allow inbound HTTP traffic to ALB"
   vpc_id      = data.aws_vpc.default.id
 
@@ -108,7 +108,7 @@ resource "aws_security_group" "alb_sg" {
 }
 
 resource "aws_security_group" "ecs_sg" {
-  name        = "${var.app_name}-ecs-tasks-sg"
+  name        = "${var.app_name}-ecs-tasks-sg-${random_string.suffix.result}"
   description = "Allow inbound traffic from ALB only"
   vpc_id      = data.aws_vpc.default.id
 
@@ -214,7 +214,7 @@ resource "aws_lb_listener_rule" "backend_api" {
 # ---------------------------------------------------------
 
 resource "aws_ecs_cluster" "main" {
-  name = "${var.app_name}-cluster"
+  name = "${var.app_name}-cluster-${random_string.suffix.result}"
 }
 
 # Get current AWS account ID (sts:GetCallerIdentity is always allowed)
@@ -260,7 +260,7 @@ resource "aws_cloudwatch_log_group" "ecs_log_group" {
 }
 
 resource "aws_ecs_service" "main" {
-  name            = "${var.app_name}-service"
+  name            = "${var.app_name}-service-${random_string.suffix.result}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = 1
@@ -316,7 +316,7 @@ resource "aws_cloudwatch_log_group" "ecs_log_group_frontend" {
 }
 
 resource "aws_ecs_service" "frontend" {
-  name            = "${var.app_name}-frontend-service"
+  name            = "${var.app_name}-frontend-service-${random_string.suffix.result}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = 1

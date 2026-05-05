@@ -7,13 +7,13 @@ variable "aws_region" {
 variable "app_name" {
   description = "The name of the application"
   type        = string
-  default     = "shopsmart"
+  default     = "shopsmart-app"
 }
 
 variable "s3_bucket_name" {
   description = "The name of the S3 bucket (must be globally unique)"
   type        = string
-  default     = "shopsmart-terraform-state-nm123987"
+  default     = "shopsmart-state-nm-final-987"
 }
 
 variable "container_port" {

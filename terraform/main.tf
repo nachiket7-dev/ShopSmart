@@ -69,51 +69,18 @@ resource "aws_ecr_repository" "shopsmart_frontend" {
 }
 
 # ---------------------------------------------------------
-# Networking (VPC, Subnets, IGW)
+# Networking (Using Default VPC to bypass VpcLimitExceeded)
 # ---------------------------------------------------------
 
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-  tags = {
-    Name = "${var.app_name}-vpc"
-  }
+data "aws_vpc" "default" {
+  default = true
 }
 
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-  tags = {
-    Name = "${var.app_name}-igw"
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
-}
-
-data "aws_availability_zones" "available" {}
-
-resource "aws_subnet" "public" {
-  count                   = 2
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.${count.index}.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  tags = {
-    Name = "${var.app_name}-public-subnet-${count.index}"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  count          = 2
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
 }
 
 # ---------------------------------------------------------
@@ -123,7 +90,7 @@ resource "aws_route_table_association" "public" {
 resource "aws_security_group" "alb_sg" {
   name        = "${var.app_name}-alb-sg"
   description = "Allow inbound HTTP traffic to ALB"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port   = 80
@@ -143,7 +110,7 @@ resource "aws_security_group" "alb_sg" {
 resource "aws_security_group" "ecs_sg" {
   name        = "${var.app_name}-ecs-tasks-sg"
   description = "Allow inbound traffic from ALB only"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port       = var.container_port
@@ -176,14 +143,14 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = aws_subnet.public[*].id
+  subnets            = data.aws_subnets.default.ids
 }
 
 resource "aws_lb_target_group" "app" {
   name        = "${var.app_name}-tg"
   port        = var.container_port
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = data.aws_vpc.default.id
   target_type = "ip"
 
   health_check {
@@ -201,7 +168,7 @@ resource "aws_lb_target_group" "frontend" {
   name        = "${var.app_name}-frontend-tg"
   port        = 8080
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = data.aws_vpc.default.id
   target_type = "ip"
 
   health_check {
@@ -279,7 +246,7 @@ resource "aws_ecs_task_definition" "app" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = "/ecs/${var.app_name}"
+        "awslogs-group"         = "/ecs/${var.app_name}-${random_string.suffix.result}"
         "awslogs-region"        = var.aws_region
         "awslogs-stream-prefix" = "ecs"
       }
@@ -288,7 +255,7 @@ resource "aws_ecs_task_definition" "app" {
 }
 
 resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = "/ecs/${var.app_name}"
+  name              = "/ecs/${var.app_name}-${random_string.suffix.result}"
   retention_in_days = 7
 }
 
@@ -301,7 +268,7 @@ resource "aws_ecs_service" "main" {
 
   network_configuration {
     security_groups  = [aws_security_group.ecs_sg.id]
-    subnets          = aws_subnet.public[*].id
+    subnets          = data.aws_subnets.default.ids
     assign_public_ip = true
   }
 
@@ -335,7 +302,7 @@ resource "aws_ecs_task_definition" "frontend" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = "/ecs/${var.app_name}-frontend"
+        "awslogs-group"         = "/ecs/${var.app_name}-frontend-${random_string.suffix.result}"
         "awslogs-region"        = var.aws_region
         "awslogs-stream-prefix" = "ecs"
       }
@@ -344,7 +311,7 @@ resource "aws_ecs_task_definition" "frontend" {
 }
 
 resource "aws_cloudwatch_log_group" "ecs_log_group_frontend" {
-  name              = "/ecs/${var.app_name}-frontend"
+  name              = "/ecs/${var.app_name}-frontend-${random_string.suffix.result}"
   retention_in_days = 7
 }
 
@@ -357,7 +324,7 @@ resource "aws_ecs_service" "frontend" {
 
   network_configuration {
     security_groups  = [aws_security_group.ecs_sg.id]
-    subnets          = aws_subnet.public[*].id
+    subnets          = data.aws_subnets.default.ids
     assign_public_ip = true
   }
 

@@ -51,7 +51,7 @@ resource "aws_s3_bucket_public_access_block" "shopsmart_bucket_public_access_blo
 # ---------------------------------------------------------
 
 resource "aws_ecr_repository" "shopsmart_backend" {
-  name                 = "shopsmart-backend"
+  name                 = "shopsmart-backend-${random_string.suffix.result}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -60,7 +60,7 @@ resource "aws_ecr_repository" "shopsmart_backend" {
 }
 
 resource "aws_ecr_repository" "shopsmart_frontend" {
-  name                 = "shopsmart-frontend"
+  name                 = "shopsmart-frontend-${random_string.suffix.result}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -139,7 +139,7 @@ resource "aws_security_group" "ecs_sg" {
 # ---------------------------------------------------------
 
 resource "aws_lb" "main" {
-  name               = "${var.app_name}-alb"
+  name               = "shopsmart-alb-${random_string.suffix.result}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
@@ -147,7 +147,7 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "app" {
-  name        = "${var.app_name}-tg"
+  name        = "shopsmart-tg-${random_string.suffix.result}"
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.default.id
@@ -165,7 +165,7 @@ resource "aws_lb_target_group" "app" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name        = "${var.app_name}-frontend-tg"
+  name        = "shopsmart-fe-tg-${random_string.suffix.result}"
   port        = 8080
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.default.id

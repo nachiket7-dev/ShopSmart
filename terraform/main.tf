@@ -51,7 +51,16 @@ resource "aws_s3_bucket_public_access_block" "shopsmart_bucket_public_access_blo
 # ---------------------------------------------------------
 
 resource "aws_ecr_repository" "shopsmart_backend" {
-  name                 = "${var.app_name}-backend"
+  name                 = "shopsmart-backend"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "shopsmart_frontend" {
+  name                 = "shopsmart-frontend"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -143,6 +152,13 @@ resource "aws_security_group" "ecs_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -181,6 +197,24 @@ resource "aws_lb_target_group" "app" {
   }
 }
 
+resource "aws_lb_target_group" "frontend" {
+  name        = "${var.app_name}-frontend-tg"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    healthy_threshold   = "3"
+    interval            = "30"
+    protocol            = "HTTP"
+    matcher             = "200"
+    timeout             = "3"
+    path                = "/"
+    unhealthy_threshold = "2"
+  }
+}
+
 resource "aws_lb_listener" "front_end" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
@@ -188,7 +222,23 @@ resource "aws_lb_listener" "front_end" {
 
   default_action {
     type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+}
+
+resource "aws_lb_listener_rule" "backend_api" {
+  listener_arn = aws_lb_listener.front_end.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
     target_group_arn = aws_lb_target_group.app.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
   }
 }
 
@@ -259,6 +309,62 @@ resource "aws_ecs_service" "main" {
     target_group_arn = aws_lb_target_group.app.arn
     container_name   = "${var.app_name}-container"
     container_port   = var.container_port
+  }
+
+  depends_on = [aws_lb_listener.front_end]
+}
+
+resource "aws_ecs_task_definition" "frontend" {
+  family                   = "${var.app_name}-frontend-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = local.lab_role_arn
+  task_role_arn            = local.lab_role_arn
+
+  container_definitions = jsonencode([{
+    name      = "${var.app_name}-frontend-container"
+    image     = "${aws_ecr_repository.shopsmart_frontend.repository_url}:latest"
+    essential = true
+    portMappings = [{
+      protocol      = "tcp"
+      containerPort = 8080
+      hostPort      = 8080
+    }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/${var.app_name}-frontend"
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
+}
+
+resource "aws_cloudwatch_log_group" "ecs_log_group_frontend" {
+  name              = "/ecs/${var.app_name}-frontend"
+  retention_in_days = 7
+}
+
+resource "aws_ecs_service" "frontend" {
+  name            = "${var.app_name}-frontend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.frontend.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs_sg.id]
+    subnets          = aws_subnet.public[*].id
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend.arn
+    container_name   = "${var.app_name}-frontend-container"
+    container_port   = 8080
   }
 
   depends_on = [aws_lb_listener.front_end]

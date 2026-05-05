@@ -4,8 +4,13 @@ output "s3_bucket_name" {
 }
 
 output "ecr_repository_url" {
-  description = "The URL of the ECR repository"
+  description = "The URL of the ECR repository (Backend)"
   value       = aws_ecr_repository.shopsmart_backend.repository_url
+}
+
+output "frontend_ecr_url" {
+  description = "The URL of the ECR repository (Frontend)"
+  value       = aws_ecr_repository.shopsmart_frontend.repository_url
 }
 
 output "ecs_cluster_name" {
@@ -14,8 +19,13 @@ output "ecs_cluster_name" {
 }
 
 output "ecs_service_name" {
-  description = "The name of the ECS service"
+  description = "The name of the ECS service (Backend)"
   value       = aws_ecs_service.main.name
+}
+
+output "frontend_service_name" {
+  description = "The name of the ECS service (Frontend)"
+  value       = aws_ecs_service.frontend.name
 }
 
 output "alb_dns_name" {

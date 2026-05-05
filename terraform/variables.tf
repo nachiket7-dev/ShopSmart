@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "app_name" {
   description = "The name of the application"
   type        = string
-  default     = "shopsmart-app"
+  default     = "shopsmart"
 }
 
 variable "s3_bucket_name" {

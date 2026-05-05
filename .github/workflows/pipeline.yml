@@ -115,13 +115,17 @@ jobs:
         id: tf_outputs
         run: |
           echo "ecr_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
+          echo "frontend_ecr_url=$(terraform output -raw frontend_ecr_url)" >> $GITHUB_OUTPUT
           echo "cluster_name=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_OUTPUT
           echo "service_name=$(terraform output -raw ecs_service_name)" >> $GITHUB_OUTPUT
+          echo "frontend_service_name=$(terraform output -raw frontend_service_name)" >> $GITHUB_OUTPUT
           echo "alb_dns_name=$(terraform output -raw alb_dns_name)" >> $GITHUB_OUTPUT
     outputs:
       ecr_url: ${{ steps.tf_outputs.outputs.ecr_url }}
+      frontend_ecr_url: ${{ steps.tf_outputs.outputs.frontend_ecr_url }}
       cluster_name: ${{ steps.tf_outputs.outputs.cluster_name }}
       service_name: ${{ steps.tf_outputs.outputs.service_name }}
+      frontend_service_name: ${{ steps.tf_outputs.outputs.frontend_service_name }}
       alb_dns_name: ${{ steps.tf_outputs.outputs.alb_dns_name }}
 
   build-and-push:
@@ -144,16 +148,26 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Build, tag, and push images to Amazon ECR
         env:
           ECR_URL: ${{ needs.terraform.outputs.ecr_url }}
+          FRONTEND_ECR_URL: ${{ needs.terraform.outputs.frontend_ecr_url }}
           IMAGE_TAG: ${{ github.sha }}
-        working-directory: ./server
         run: |
+          # Build Backend
+          cd server
           docker build -t $ECR_URL:$IMAGE_TAG .
           docker tag $ECR_URL:$IMAGE_TAG $ECR_URL:latest
           docker push $ECR_URL:$IMAGE_TAG
           docker push $ECR_URL:latest
+          cd ..
+          
+          # Build Frontend
+          cd client
+          docker build -t $FRONTEND_ECR_URL:$IMAGE_TAG .
+          docker tag $FRONTEND_ECR_URL:$IMAGE_TAG $FRONTEND_ECR_URL:latest
+          docker push $FRONTEND_ECR_URL:$IMAGE_TAG
+          docker push $FRONTEND_ECR_URL:latest
 
   deploy:
     name: Deploy to ECS Fargate
@@ -169,31 +183,49 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Force New ECS Deployment
+      - name: Force New ECS Deployments
         run: |
+          # Update Backend
           aws ecs update-service \
             --cluster ${{ needs.terraform.outputs.cluster_name }} \
             --service ${{ needs.terraform.outputs.service_name }} \
             --force-new-deployment
+          
+          # Update Frontend
+          aws ecs update-service \
+            --cluster ${{ needs.terraform.outputs.cluster_name }} \
+            --service ${{ needs.terraform.outputs.frontend_service_name }} \
+            --force-new-deployment
 
-      - name: Wait for Service Stability
+      - name: Wait for Services Stability
         run: |
           aws ecs wait services-stable \
             --cluster ${{ needs.terraform.outputs.cluster_name }} \
-            --services ${{ needs.terraform.outputs.service_name }}
+            --services ${{ needs.terraform.outputs.service_name }} ${{ needs.terraform.outputs.frontend_service_name }}
 
       - name: Verify Service Connectivity
         run: |
           ALB_URL=${{ needs.terraform.outputs.alb_dns_name }}
-          echo "Verifying service at http://$ALB_URL/api/health"
-          # Try up to 10 times
+          
+          echo "Verifying Backend at http://$ALB_URL/api/health"
           for i in {1..10}; do
             if curl -s -f "http://$ALB_URL/api/health"; then
-              echo "Service is UP!"
+              echo "Backend is UP!"
+              break
+            fi
+            echo "Waiting for backend... ($i/10)"
+            sleep 15
+            if [ $i -eq 10 ]; then echo "Backend failed"; exit 1; fi
+          done
+
+          echo "Verifying Frontend at http://$ALB_URL/"
+          for i in {1..10}; do
+            if curl -s -f "http://$ALB_URL/"; then
+              echo "Frontend is UP!"
               exit 0
             fi
-            echo "Waiting for service... ($i/10)"
+            echo "Waiting for frontend... ($i/10)"
             sleep 15
           done
-          echo "Service failed to respond at http://$ALB_URL/api/health"
+          echo "Frontend failed to respond at http://$ALB_URL/"
           exit 1

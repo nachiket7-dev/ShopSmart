@@ -154,13 +154,12 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip"
 
   health_check {
-    healthy_threshold   = "3"
-    interval            = "30"
-    protocol            = "HTTP"
-    matcher             = "200"
-    timeout             = "3"
+    healthy_threshold   = "2"
+    unhealthy_threshold = "10"
+    timeout             = "10"
+    interval            = "45"
     path                = "/api/health"
-    unhealthy_threshold = "2"
+    matcher             = "200"
   }
 }
 
@@ -172,13 +171,12 @@ resource "aws_lb_target_group" "frontend" {
   target_type = "ip"
 
   health_check {
-    healthy_threshold   = "3"
-    interval            = "30"
-    protocol            = "HTTP"
-    matcher             = "200"
-    timeout             = "3"
+    healthy_threshold   = "2"
+    unhealthy_threshold = "10"
+    timeout             = "10"
+    interval            = "45"
     path                = "/"
-    unhealthy_threshold = "2"
+    matcher             = "200"
   }
 }
 
@@ -229,8 +227,8 @@ resource "aws_ecs_task_definition" "app" {
   family                   = "${var.app_name}-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = local.lab_role_arn
   task_role_arn            = local.lab_role_arn
 
@@ -290,8 +288,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.app_name}-frontend-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = local.lab_role_arn
   task_role_arn            = local.lab_role_arn
 

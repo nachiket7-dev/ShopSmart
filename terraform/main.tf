@@ -244,9 +244,9 @@ resource "aws_ecs_task_definition" "app" {
       hostPort      = var.container_port
     }]
     environment = [
-      { name = "MONGODB_URI", value = "mongodb+srv://amnachiketa_db_user:rAP6wckvXr62Un0f@cluster0.sjaevcg.mongodb.net/?appName=Cluster0" },
-      { name = "JWT_SECRET", value = "ddd66d20e1f4234257a3d6e7a825c990" },
-      { name = "PORT", value = "3000" }
+      { name = "MONGODB_URI", value = var.mongodb_uri },
+      { name = "JWT_SECRET", value = var.jwt_secret },
+      { name = "PORT", value = tostring(var.container_port) }
     ]
     logConfiguration = {
       logDriver = "awslogs"
